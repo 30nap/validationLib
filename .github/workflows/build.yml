@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+    tags:
+      - 'v*.*.*'  # روی تگ‌های نسخه اجرا می‌شود
+  workflow_dispatch: # امکان اجرای دستی
 
 jobs:
   build:
@@ -55,11 +57,19 @@ jobs:
       - name: Build JAR
         run: ./gradlew clean build
 
-      - name: Create Release if not exists
-        id: create_release
+      - name: Determine Release Tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=v${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          fi
+
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name || 'v' + github.run_number }}
+          tag_name: ${{ env.TAG_NAME }}
           files: build/libs/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
